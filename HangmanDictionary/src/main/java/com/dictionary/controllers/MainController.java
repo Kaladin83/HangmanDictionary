@@ -1,10 +1,7 @@
 package com.dictionary.controllers;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 
 import com.dictionary.model.HangmanResult;
@@ -25,6 +22,7 @@ public class MainController {
 	private static final String CHECK_LETTER_URL = BASE_URL+"checkLetter?letter=";
 	public static String originalWord;
 	
+	@CrossOrigin(origins = "http://localhost:3000")
 	@GetMapping("startGame")
 	public HangmanResult startGame() {
 		HangmanResult hangmanResult = new HangmanResult();
@@ -33,35 +31,36 @@ public class MainController {
 		HangmanServerResult result;
 		try {
 			result = restTemplate.getForObject(START_GAME_URL, HangmanServerResult.class);
-			hangmanResult.setResult(result.getWord());
-			hangmanResult.setReturnCode(result.getReturnCode());
 			if (result.getReturnCode() == 0) {
 				originalWord = result.getOriginalWord();
 				dictService.createMapOfWords(result.getListOfWords());
 				hangmanResult = dictService.startGame(result.getWord());
 			}
+			hangmanResult.setResult(result.getWord());
+			hangmanResult.setReturnCode(result.getReturnCode());
 		}
 		catch(Exception e) {
 			System.out.println("Exception caught calling server: "+e.getMessage());
 		}
-		//callServer(result);
 		return hangmanResult;
 	}
 	
+	@CrossOrigin(origins = "http://localhost:3000")
 	@GetMapping("checkLetter")
-	public HangmanResult checkLetter(@PathVariable char letter) {
+	public HangmanResult checkLetter(@RequestParam char letter) {
+		char letter_ = String.valueOf(letter).toLowerCase().charAt(0);
 		HangmanResult hangmanResult = new HangmanResult();
 		hangmanResult.setReturnCode(-1);
 		
 		HangmanServerResult result;
 		try {
-			result = restTemplate.getForObject(CHECK_LETTER_URL+letter, HangmanServerResult.class);
-			hangmanResult.setResult(result.getWord());
-			hangmanResult.setReturnCode(result.getReturnCode());
+			result = restTemplate.getForObject(CHECK_LETTER_URL+letter_, HangmanServerResult.class);
 			if (result.getReturnCode() == 0) {
-				hangmanResult = dictService.findMostCommonChars(dictService.getListOfWords(), result.getWord(), result.isFound(), letter);
+				hangmanResult = dictService.findMostCommonChars(dictService.getListOfWords(), result.getWord(), result.isFound(), letter_);
 				hangmanResult.setReturnCode(0);
 			}
+			hangmanResult.setResult(result.getWord());
+			hangmanResult.setReturnCode(result.getReturnCode());
 		}
 		catch(Exception e) {
 			System.out.println("Exception caught calling server: "+e.getMessage());
@@ -69,32 +68,4 @@ public class MainController {
 		
 		return hangmanResult;
 	}
-
-//	private void callServer(HangmanServerResult result) {
-//		
-//		char lastChar = ' ';
-//		int itterations = 0;
-//		while (result.getReturnCode() == 0) {
-//			HangmanResult res;
-//			if (itterations == 0) {
-//				res = dictService.startGame(result.getWord());
-//			}
-//			else {
-//				res = dictService.findMostCommonChars(dictService.getListOfWords(), result.getWord(), result.isFound(), lastChar);
-//			}
-//			
-//			if (res.getMapOfValues().size() > 0) {
-//				int index = 0;
-//				for (Map.Entry<Character, Integer> item: res.getMapOfValues().entrySet()) {
-//					if (index == 1) {
-//						break;
-//					}
-//					lastChar = item.getKey();
-//					result = restTemplate.getForObject("http://localhost:8080/checkLetter?letter="+item.getKey(), HangmanServerResult.class);
-//					index++;
-//				}
-//			}
-//			itterations++;
-//		}
-//	}
 }

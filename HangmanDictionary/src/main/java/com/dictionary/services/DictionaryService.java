@@ -7,13 +7,14 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.stream.Collectors;
+import static java.util.stream.Collectors.*;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.dictionary.model.HangmanResult;
 import com.dictionary.model.LetterStatistics;
+import com.dictionary.model.TopChoice;
 import com.dictionary.model.Word;
 
 @Service
@@ -84,54 +85,67 @@ public class DictionaryService {
 				newList.add(word);
 			}
 		}	
+
 		return newList;
 	}
 
 	//finding the most common char amongst all words
 	private HangmanResult findMostCommonChars(List<Word> listOfWords) {
 		
-		Map<Character , Integer> mapOfCounts = new HashMap<Character , Integer>();
+		Map<Character, Integer> mapOfCounts = getMapOfCounts(listOfWords);
 		
-		for (Word word: listOfWords) {
-			for (Map.Entry<Character , LetterStatistics> item : word.getWordStatistics().entrySet()) {
-				mapOfCounts.put(item.getKey(), mapOfCounts.getOrDefault(item.getKey(), 0)+item.getValue().getCount());	
-			}
-		}
+		mapOfCounts = filterPrevResults(mapOfCounts);
 		
-		for (Map.Entry<Character , List<Integer>> chars : result.entrySet()) {
-			if (mapOfCounts.containsKey(chars.getKey())) {
-				mapOfCounts.remove(chars.getKey());
-			}
-		} 
+		Map<Character, Integer> sortedByValue = sortByNumberOfOccurances(mapOfCounts);
 		
-		Map<Character, Integer> sortedByValue = mapOfCounts.entrySet().stream()
-        .sorted(Map.Entry.comparingByValue(Comparator.reverseOrder()))
-        .collect(Collectors.toMap(
-                Map.Entry::getKey, 
-                Map.Entry::getValue, 
-                (x,y)-> {throw new AssertionError();},
-                LinkedHashMap::new
-        ));
-	
-		int sum = 0;
-		for (Map.Entry<Character , Integer> item : sortedByValue.entrySet()) {
-			sum += item.getValue();
-		}
+		int sum = getNumberOfLettersLeft(sortedByValue);
 		
-		Map<Character, Integer> map = new LinkedHashMap<Character,Integer>();
-		int index = 0;
-		for (Map.Entry<Character , Integer> item : sortedByValue.entrySet()) {
-			if (index < 5) {
-				map.put(item.getKey(), (int) (item.getValue().floatValue()/sum*100));
-			}
-			else {
-				break;
-			}
-			index++;
-		}
 		HangmanResult result = new HangmanResult();
-		result.setMapOfValues(map);
+		result.setListOfTopChoices(getListOfTopChoices(sortedByValue, sum));
 		return result;
+	}
+
+	private Map<Character, Integer> getMapOfCounts(List<Word> listOfWords) {
+		Map<Character , Integer> mapOfCounts = new HashMap<Character , Integer>();
+
+		listOfWords.forEach(s ->  s.getWordStatistics()
+				.forEach((key, value) -> mapOfCounts.put(key, 
+						mapOfCounts.getOrDefault(key, 0)+value.getCount())));
+		
+		return mapOfCounts;
+	}
+	
+	private Map<Character, Integer> filterPrevResults(Map<Character, Integer> mapOfCounts) {
+		return mapOfCounts.entrySet().stream()
+				.filter(s-> !result.containsKey(s.getKey()))
+				.collect(toMap(Entry::getKey, Entry::getValue));
+	}
+	
+	private Map<Character, Integer> sortByNumberOfOccurances(Map<Character, Integer> mapOfCounts) {
+		return mapOfCounts.entrySet().stream()
+		        .sorted(Entry.comparingByValue(Comparator.reverseOrder()))
+		        .collect(toMap(Entry::getKey, Entry::getValue,
+		                (x,y)-> {throw new AssertionError();},
+		                LinkedHashMap::new
+		        ));
+	}
+	
+	private int getNumberOfLettersLeft(Map<Character, Integer> sortedByValue) {
+		return sortedByValue.entrySet().stream()
+				.mapToInt(Entry::getValue)
+				.sum();
+	}
+	
+	private List<TopChoice> getListOfTopChoices(Map<Character, Integer> sortedByValue, int sum) {
+		return sortedByValue.entrySet().stream()
+				.limit(5)
+				.map(s-> mapToTopChoices(s.getKey(), s.getValue(), sum))
+				.collect(toList());
+	}
+	
+	private TopChoice mapToTopChoices(Character key, Integer value, int sum) {
+		return new TopChoice(String.valueOf(key).toUpperCase().charAt(0), 
+				String.valueOf((int) (value.floatValue()/sum*100)+"%"));
 	}
 
 	// filtering words that does not have chars in the correct place or does not have them at all 

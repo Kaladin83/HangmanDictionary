@@ -1,11 +1,11 @@
 package com.dictionary.model;
 
-import java.util.Map;
+import java.util.List;
 
 public class HangmanResult {
 	
 	private int returnCode;
-	private Map<Character, Integer> mapOfValues;
+	private List<TopChoice> ListOfTopChoices;
 	private String result;
 	
 	public int getReturnCode() {
@@ -16,12 +16,12 @@ public class HangmanResult {
 		this.returnCode = returnCode;
 	}
 
-	public Map<Character, Integer> getMapOfValues() {
-		return mapOfValues;
+	public List<TopChoice> getListOfTopChoices() {
+		return ListOfTopChoices;
 	}
 
-	public void setMapOfValues(Map<Character, Integer> mapOfValues) {
-		this.mapOfValues = mapOfValues;
+	public void setListOfTopChoices(List<TopChoice> listOfTopChoices) {
+		ListOfTopChoices = listOfTopChoices;
 	}
 
 	public String getResult() {
